@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microscope Solar System Viewer</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #000;
+  color:white;
+  overflow: hidden;
+}
+
+#microscope {
+  width: 100px;
+  height: 100px;
+  margin: 150px auto;
+  background: silver;
+  border-radius: 50%;
+  line-height: 100px;
+  font-weight: bold;
+  cursor: pointer;
+  color: black;
+  font-size:50px;
+  user-select:none;
+  transition: all 0.8s ease;
+}
+
+#canvasContainer {
+  display: none;
+  position: relative;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.8s ease;
+}
+
+canvas {
+  background: black;
+  display: block;
+  margin: 20px auto;
+  border: 2px solid #555;
+}
+
+#info {
+  font-size: 18px;
+  margin-top: 10px;
+}
+button {
+  padding:10px 16px;
+  font-size:16px;
+  cursor:pointer;
+  margin-top:10px;
+  border:none;
+  border-radius:4px;
+  background:#9333ea;
+  color:white;
+}
+button:hover { background:#6a1cb2; }
+</style>
+</head>
+<body>
+
+<h1>Microscope Solar System Viewer</h1>
+<div id="microscope">🔭</div>
+
+<div id="canvasContainer">
+  <canvas id="starCanvas" width="600" height="600"></canvas>
+  <div id="info">Stars collected: <span id="score">0</span></div>
+  <button id="exitBtn">Exit Microscope</button>
+</div>
+
+<script>
+const microscope = document.getElementById("microscope");
+const container = document.getElementById("canvasContainer");
+const canvas = document.getElementById("starCanvas");
+const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("score");
+
+let stars = [];
+let planets = [];
+let score = 0;
+
+const centerX = canvas.width/2;
+const centerY = canvas.height/2;
+
+// Generate stars
+function generateStars(num){
+  stars = [];
+  for(let i=0;i<num;i++){
+    stars.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height,
+      r: Math.random()*2 + 1,
+      dx: (Math.random()-0.5)*0.3,
+      dy: (Math.random()-0.5)*0.3,
+      alpha: 1,
+      collected: false
+    });
+  }
+}
+
+// Planets data (simplified scale)
+function generatePlanets(){
+  const planetData = [
+    {name:"Mercury", color:"#aaa", orbit:50, size:3, speed:0.04},
+    {name:"Venus", color:"#f5e1a4", orbit:70, size:5, speed:0.03},
+    {name:"Earth", color:"#3f87ff", orbit:90, size:5, speed:0.025},
+    {name:"Mars", color:"#ff4b3e", orbit:110, size:4, speed:0.02},
+    {name:"Jupiter", color:"#d9a066", orbit:140, size:10, speed:0.015},
+    {name:"Saturn", color:"#f5e1a4", orbit:170, size:9, speed:0.012},
+    {name:"Uranus", color:"#66ffff", orbit:200, size:7, speed:0.01},
+    {name:"Neptune", color:"#3366ff", orbit:230, size:7, speed:0.008},
+  ];
+
+  planets = planetData.map(p => ({
+    ...p,
+    angle: Math.random()*Math.PI*2
+  }));
+}
+
+// Draw planets and stars
+function drawScene(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw Sun
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 15, 0, Math.PI*2);
+  ctx.fillStyle = "yellow";
+  ctx.fill();
+
+  // Draw orbits
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
+  for(let p of planets){
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, p.orbit, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Draw planets
+  for(let p of planets){
+    const x = centerX + Math.cos(p.angle)*p.orbit;
+    const y = centerY + Math.sin(p.angle)*p.orbit;
+    ctx.beginPath();
+    ctx.arc(x, y, p.size, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+
+  // Draw stars
+  for(let star of stars){
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${star.alpha})`;
+    ctx.fill();
+  }
+}
+
+// Update planets and stars
+function updateScene(){
+  for(let star of stars){
+    if(star.collected){
+      star.alpha -= 0.05;
+      continue;
+    }
+    star.x += star.dx;
+    star.y += star.dy;
+    if(star.x<0 || star.x>canvas.width) star.dx*=-1;
+    if(star.y<0 || star.y>canvas.height) star.dy*=-1;
+    star.alpha = 0.5 + 0.5*Math.sin(Date.now()/500 + star.x);
+  }
+
+  // Animate planets
+  for(let p of planets){
+    p.angle += p.speed;
+  }
+}
+
+// Animation loop
+function animate(){
+  updateScene();
+  drawScene();
+  requestAnimationFrame(animate);
+}
+
+// Microscope click to enter
+microscope.addEventListener("click", ()=>{
+  microscope.style.transform = "scale(0.2)";
+  microscope.style.opacity = "0";
+
+  setTimeout(()=>{
+    microscope.style.display = "none";
+    container.style.display = "block";
+    setTimeout(()=>{
+      container.style.opacity = "1";
+      container.style.transform = "scale(1)";
+    }, 50);
+
+    score = 0;
+    scoreDisplay.textContent = score;
+    generateStars(50);
+    generatePlanets();
+    animate();
+  }, 800);
+});
+
+// Click stars to collect
+canvas.addEventListener("click", (e)=>{
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  for(let star of stars){
+    if(star.collected) continue;
+    const dx = mx - star.x;
+    const dy = my - star.y;
+    if(Math.sqrt(dx*dx + dy*dy) <= star.r+5){
+      star.collected = true;
+      score++;
+      scoreDisplay.textContent = score;
+      break;
+    }
+  }
+});
+
+// Exit microscope smoothly
+document.getElementById("exitBtn").addEventListener("click", ()=>{
+  container.style.opacity = "0";
+  container.style.transform = "scale(0.5)";
+  setTimeout(()=>{
+    container.style.display = "none";
+    microscope.style.display = "block";
+    setTimeout(()=>{
+      microscope.style.transform = "scale(1)";
+      microscope.style.opacity = "1";
+    }, 50);
+  }, 500);
+});
+</script>
+
+</body>
+</html>
